@@ -30,12 +30,26 @@
 " http://info.borland.com/techpubs/bcppbuilder/v5/updates/ent.html
 " there the most interesting are
 " B5MS.ZIP - Win32 API documentation old but useful with stuff like
-" OpenGL1.1, a similar file can be downloaded from the lcc compiler page
+" OpenGL1.1. A similar file can be downloaded from the lcc and mingw 
+" compiler pages but that file is smaller and I dont think it has the OpenGL
+" help file. If you add Win32sdk.hlp to the script will also the other hlp
+" files from that archive be found.
 " B5SCL.ZIP - Standard C++ library help with STL
 " B5RTL.ZIP - C lib reference
 " 
 " Java users should take a look at tip #232 mentioned above. 
 "
+" BUGS/Features
+" -If the path to a.chm file has any spaces does not keyhh or hh works
+" properly. I think this is a known issue with Windows HTML help. Bob solved
+" it by linking directories and I think that is the only way.
+" -If you do an ALT+TAB to get away from a .chm file may you see an temporary
+"  extra copy in the taskbar. Note that the icons for .chm is the ones
+"  normally used for .hlp files.
+"  -It will probably take some time before you get used to how keyhh works. 
+"  In my experience does it work very well but sometimes do you have to look twice to see it. :)   
+" -The popup menu can be incorrect after removing a file from  the collection. After a restart is it OK. 
+"  
 " The key maps
 nmap <C-F1> :silent! WinHelp <C-R><C-W><CR>
 nmap <C-S-F1> :silent! popup ]pophelp<CR>
@@ -50,6 +64,17 @@ command! -nargs=* WinHelpSearch call s:WinHelpSearch (<f-args>)
 
 " since the modifies itself should some care be taken if you alters it
 " this is a hack and not a model for something good. :)
+
+function! IsHelpFile(fName)
+	if a:fName==""
+		return 0
+	elseif tolower(fnamemodify(a:fName,":e"))=="chm"
+		return 1
+	else
+		return tolower(fnamemodify(a:fName,":e"))=="hlp"
+	endif
+endfunction
+		
 function! s:BrowseHelpAdd()
 	let browseFile=""
 	" stupid fix because browse() does not always returns the full
@@ -58,9 +83,11 @@ function! s:BrowseHelpAdd()
 	cd $VIM
 	let browseFile=browse(0,"Help file to add","","")
 	execute "cd " . cwdCur
-	if browseFile!=""
+	if IsHelpFile(browseFile)
 		let browseFile=expand(browseFile, ":p")
 		call s:MakeMenuEntry(browseFile)
+	else
+		call confirm("Not an .chm or .hlp file","&OK",1,"Error")
 	endif
 endfunction
 
@@ -78,6 +105,9 @@ endfunction
 
 function! s:SetCurrentHelpFile(fileNameWithPath)
 	let s:currentHelpFile=a:fileNameWithPath
+	if (! s:writeStuff)
+		return
+	endif
 	split
 	call s:HiddenLoad()
 	let @c="call s:SetCurrentHelpFile('" . a:fileNameWithPath . "')"
@@ -118,9 +148,12 @@ function! s:MakeMenuEntry(fileNameWithPath)
 	execute "amenu w&inhelp.&open\\ help." . fnamemodify(a:fileNameWithPath,":t:r") . " :OpenHelpFile " . a:fileNameWithPath . "<CR>"
 	execute "amenu w&inhelp.&set\\ current." . fnamemodify(a:fileNameWithPath,":t:r") . " :SetCurrentHelpFile " . a:fileNameWithPath . "<CR>"
 	execute "amenu w&inhelp.&remove\\ help." . fnamemodify(a:fileNameWithPath,":t:r") . " :RemoveMenuItem " . a:fileNameWithPath . "<CR>"
-	execute "amenu ]pophelp." . fnamemodify(a:fileNameWithPath,":t:r") . " :WinHelpSearch " . a:fileNameWithPath . " <C-R><C-W><CR>"
+	execute "amenu ]pophelp." . fnamemodify(a:fileNameWithPath,":t:r") . " :WinHelpSearch " . substitute(a:fileNameWithPath,' ','\\ ','g')  . " <C-R><C-W><CR><CR>"
 	if s:currentHelpFile==""
 		call s:SetCurrentHelpFile(a:fileNameWithPath)
+	endif
+	if (! s:writeStuff)
+		return
 	endif
 	split
 	call s:HiddenLoad()
@@ -137,13 +170,16 @@ function! s:MakeMenuEntry(fileNameWithPath)
 	quit!
 endfunction
 function! s:OpenHelpFile(fileNameWithPath)
-	if fnamemodify(a:fileNameWithPath,":e")=="chm"
-		silent! execute "!start keyhh " . a:fileNameWithPath 
-	elseif fnamemodify(a:fileNameWithPath,":e")=="hlp"
-		silent! execute "!start winhelp " . a:fileNameWithPath 
+	let cwdCur=getcwd()
+	cd $VIM
+	if tolower(fnamemodify(a:fileNameWithPath,":e"))=="chm"
+		silent! execute "silent! !start keyhh " . a:fileNameWithPath 
+	elseif tolower(fnamemodify(a:fileNameWithPath,":e"))=="hlp"
+		silent! execute "silent! !start winhelp " . a:fileNameWithPath 
 	else
-		" generate some warning
+		call confirm("Not an .chm or .hlp file","&OK",1,"Error")
 	endif
+	execute "cd " . cwdCur
 endfunction
 	
 function! s:WinHelp(keyToLookup)
@@ -154,19 +190,28 @@ function! s:WinHelp(keyToLookup)
 	call s:WinHelpSearch(s:currentHelpFile, a:keyToLookup)
 endfunction
 function! s:WinHelpSearch(fileNameWithPath, keyToLookup)
-	if fnamemodify(a:fileNameWithPath,":e")=="chm"
-		silent! execute "!start keyhh -\\#klink " . a:keyToLookup . " " . a:fileNameWithPath 
-	elseif fnamemodify(a:fileNameWithPath,":e")=="hlp"
-		silent! execute "!start winhelp -k " . a:keyToLookup . " " . a:fileNameWithPath 
+	let cwdCur=getcwd()
+	cd $VIM
+	if tolower(fnamemodify(a:fileNameWithPath,":e"))=="chm"
+		silent! execute "silent! !start keyhh -\\#klink " . a:keyToLookup . " " . a:fileNameWithPath
+	elseif tolower(fnamemodify(a:fileNameWithPath,":e"))=="hlp"
+		silent! execute "silent! !start winhelp -k " . a:keyToLookup . " " . a:fileNameWithPath 
 	else
 		call confirm("Not an .chm or .hlp file","&OK",1,"Error")
 	endif
+	execute "cd " . cwdCur
 endfunction
 		
-if has("gui_running")
-	set mousemodel=popup
-	silent! aunmenu w&inhelp
-	silent! aunmenu pophelp
+function! s:ReLoadStuff() 
+	silent! aunmenu! winhelp.*
+	silent! aunmenu! ]pophelp.*
 	let s:currentHelpFile=""
 	amenu w&inhelp.&Add\ help\ file<TAB>:BrowseHelpAdd	:BrowseHelpAdd<CR>
+endfunction
+
+if has("gui_running") && (has("win32") || has("win16"))
+	set mousemodel=popup
+	let s:writeStuff=0
+	call s:ReLoadStuff()
+	let s:writeStuff=1
 endif
