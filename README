@@ -1,0 +1,28 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=751
+
+This script lets you setup a collection of help files in Windows .hlp and
+.chm format and search for the word under the cursor in them. The current
+files and state is stored in the scricpt file for further sessions. Use the
+new winhelp dropdown menu to add or remove files.
+Check out tip #506
+http://www.vim.org/tips/tip.php?tip_id=506
+and tip #232
+http://www.vim.org/tips/tip.php?tip_id=232
+
+The default keymappings for normal mode are: 
+Ctrl+Shift+F1 - pops up a menu with the help files and search the selected
+file for the word under the cursor.
+Ctrl+F1 - search the current help file for the word. Use the winhelp menu
+for setting the current help file.
+
+BUGS/Features
+-If the path to a.chm file has any spaces does not keyhh or hh works
+properly. I think this is a known issue with Windows HTML help. Bob solved
+it by linking directories and I think that is the only way.
+-If you do an ALT+TAB to get away from a .chm file may you see an temporary
+ extra copy in the taskbar. Note that the icons for .chm is the ones
+ normally used for .hlp files.
+ -It will probably take some time before you get used to how keyhh works. 
+ In my experience does it work very well but sometimes do you have to look twice to see it. :)   
+-The popup menu can be incorrect after removing a file from  the collection. After a restart is it OK. 
+ 
